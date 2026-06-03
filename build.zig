@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
         .use_png = true,
         .use_glib = false,
         .use_dwrite = false,
-        .use_fontconfig = false,
+        .use_fontconfig = true,
         .use_freetype = true,
         .use_quartz = false,
         .target = target,
@@ -89,7 +89,11 @@ pub fn build(b: *std.Build) void {
             "src/init.cc",
             "src/itemize.cc",
             "src/FontManager.cc",
-            if (target.result.os.tag == .windows) "src/FontManagerWindows.cc" else "src/FontManagerMacos.cc",
+            switch (target.result.os.tag) {
+                .windows => "src/FontManagerWindows.cc",
+                .macos => "src/FontManagerMacos.cc",
+                else => "src/FontManagerLinux.cc",
+            },
             "src/FontFace.cc",
             "src/FontFaceSet.cc",
             "src/FontParser.cc",
@@ -124,6 +128,10 @@ pub fn build(b: *std.Build) void {
     if (target.result.os.tag == .windows) {
         canvas.linkSystemLibrary("dwrite");
     }
+
+    // Linux/BSD use FontConfig (FontManagerLinux.cc). It's expected to be
+    // available statically via the cairo dependency; header/link wiring is
+    // handled when building for those targets.
 
     const move = b.addInstallFile(canvas.getEmittedBin(), "../bin/canvas.node");
     move.step.dependOn(&canvas.step);
